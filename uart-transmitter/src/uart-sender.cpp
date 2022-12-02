@@ -10,6 +10,8 @@
 #define DEBUG_PIN5 (5u)
 #define DEBUG_PIN_INITIAL_STATE (HIGH)
 
+#define UART_INSTANCE Serial1 // Serial1 is UART 0 on the Pico, Serial2 is UART1
+#define UART_FIFO_SIZE (256)
 #define UART_BAUDRATE (921600)
 
 #ifdef ARDUINO_ARCH_RP2040
@@ -95,12 +97,12 @@ void setup() {
     pinMode(DEBUG_PIN5, OUTPUT);
     digitalWrite(DEBUG_PIN5, DEBUG_PIN_INITIAL_STATE);
 
-    // Configure the UART, Serial1 is UART 0 on the Pico
-    Serial1.setRX(UART_RX);
-    Serial1.setTX(UART_TX);
+    // Configure the UART
+    UART_INSTANCE.setRX(UART_RX);
+    UART_INSTANCE.setTX(UART_TX);
 
-    Serial1.setFIFOSize(256);
-    Serial1.begin(UART_BAUDRATE);
+    UART_INSTANCE.setFIFOSize(UART_FIFO_SIZE);
+    UART_INSTANCE.begin(UART_BAUDRATE);
 
     // Initialize output buffer
     for (size_t i = 0; i < BUF_LEN; ++i) {
@@ -114,9 +116,9 @@ void setup() {
 
 void sendTestData(uint8_t length) {
     // Send the data length value on the UART so the receiver knows what to expect next
-    Serial1.write(length);
+    UART_INSTANCE.write(length);
     // Write the output buffer to the UART
-    Serial1.write(out_buf, length);
+    UART_INSTANCE.write(out_buf, length);
     Serial.printf("UART sender says: Output buffer page %u sent, buffer size: %03u \r\n", sendCounter, length);
     sendCounter++;
 }
@@ -129,13 +131,13 @@ void loop() {
     static unsigned int loopCounter = 0, lastLoopCounter = 0;
     loopCounter++;
 
-    int bytesAvailable = Serial1.available();
+    int bytesAvailable = UART_INSTANCE.available();
     if (bytesAvailable > 0) {
         digitalWrite(DEBUG_PIN2, LOW);
         // Read the expected byte count from the sender
-        previousTransferSize = Serial1.read();
+        previousTransferSize = UART_INSTANCE.read();
         //  Read from the UART
-        Serial1.readBytes(in_buf, previousTransferSize); // If the expected bytes are not all received the function will timeout subject to setTimeout(), default 1000mS
+        UART_INSTANCE.readBytes(in_buf, previousTransferSize); // If the expected bytes are not all received the function will timeout subject to setTimeout(), default 1000mS
         digitalWrite(DEBUG_PIN2, HIGH);
         delayMicroseconds(10);
         digitalWrite(DEBUG_PIN2, LOW);

@@ -10,6 +10,8 @@
 #define DEBUG_PIN5 (9u)
 #define DEBUG_PIN_INITIAL_STATE (HIGH)
 
+#define UART_INSTANCE Serial1 // Serial1 is UART 0 on the Pico, Serial2 is UART1
+#define UART_FIFO_SIZE (256)
 #define UART_BAUDRATE (921600)
 
 #ifdef ARDUINO_ARCH_RP2040
@@ -93,12 +95,12 @@ void setup() {
     pinMode(DEBUG_PIN5, OUTPUT);
     digitalWrite(DEBUG_PIN5, DEBUG_PIN_INITIAL_STATE);
 
-    // Configure the UART, Serial1 is UART 0 on the Pico
-    Serial1.setRX(UART_RX);
-    Serial1.setTX(UART_TX);
+    // Configure the UART
+    UART_INSTANCE.setRX(UART_RX);
+    UART_INSTANCE.setTX(UART_TX);
 
-    Serial1.setFIFOSize(256);
-    Serial1.begin(UART_BAUDRATE);
+    UART_INSTANCE.setFIFOSize(UART_FIFO_SIZE);
+    UART_INSTANCE.begin(UART_BAUDRATE);
 
     // Initialize output buffer
     for (size_t i = 0; i < BUF_LEN; ++i) {
@@ -114,23 +116,25 @@ void setup() {
 void loop() {
     static uint8_t expectedByteCount;
     // Read the expected byte count a simple way of verifying the last data transfer
-    int bytesAvailable = Serial1.available();
+    int bytesAvailable = UART_INSTANCE.available();
     if (bytesAvailable > 0) {
-        // Read the expected byte count from the sender
-        expectedByteCount = Serial1.read();
-        //  Read from the UART
-        Serial1.readBytes(in_buf, expectedByteCount); // If the expected bytes are not all received the function will timeout subject to setTimeout(), default 1000mS
-        byteCount = expectedByteCount;
-
         digitalWrite(DEBUG_PIN2, LOW);
+        // Read the expected byte count from the sender
+        expectedByteCount = UART_INSTANCE.read();
+        //  Read from the UART
+        UART_INSTANCE.readBytes(in_buf, expectedByteCount); // If the expected bytes are not all received the function will timeout subject to setTimeout(), default 1000mS
+        byteCount = expectedByteCount;
+        digitalWrite(DEBUG_PIN2, HIGH);
+
+        digitalWrite(DEBUG_PIN3, LOW);
         // Send data back to the sender...
         // Send the data length value on the UART so the receiver knows what to expect next
-        Serial1.write(BUF_LEN);
+        UART_INSTANCE.write(BUF_LEN);
         // Write the output buffer to the UART
-        Serial1.write(out_buf, BUF_LEN);
-        digitalWrite(DEBUG_PIN2, HIGH);
+        UART_INSTANCE.write(out_buf, BUF_LEN);
+        digitalWrite(DEBUG_PIN3, HIGH);
         delayMicroseconds(10);
-        digitalWrite(DEBUG_PIN2, LOW);
+        digitalWrite(DEBUG_PIN3, LOW);
         Serial.printf("\e[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); // move to the home position, at the upper left of the screen and then down
         Serial.printf("bytesAvailable: %3d                                             \r\n", bytesAvailable);
         Serial.printf("UART receiver says: read page %u from the sender, byteCount: %u lastReceivedByteCount: %u \r\n", receiveCounter, byteCount, lastReceivedByteCount);
@@ -141,7 +145,7 @@ void loop() {
         clearbuf(in_buf, BUF_LEN);
         lastReceivedByteCount = byteCount;
         receiveCounter++;
-        digitalWrite(DEBUG_PIN2, HIGH);
+        digitalWrite(DEBUG_PIN3, HIGH);
     }
 
     seconds = (millis() - startMillis) / 1000;
