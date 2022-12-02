@@ -1,0 +1,60 @@
+{
+	"folders": [
+		{
+			"path": "uart-receiver"
+		},
+		{
+			"path": "uart-transmitter"
+		},
+		{
+			"path": "lib"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"array": "cpp",
+			"deque": "cpp",
+			"forward_list": "cpp",
+			"list": "cpp",
+			"string": "cpp",
+			"unordered_map": "cpp",
+			"unordered_set": "cpp",
+			"vector": "cpp",
+			"string_view": "cpp",
+			"initializer_list": "cpp",
+			"*.tcc": "cpp",
+			"optional": "cpp",
+			"fstream": "cpp",
+			"iomanip": "cpp",
+			"ios": "cpp",
+			"istream": "cpp",
+			"limits": "cpp",
+			"mutex": "cpp",
+			"ostream": "cpp",
+			"sstream": "cpp",
+			"streambuf": "cpp",
+			"thread": "cpp",
+			"type_traits": "cpp",
+			"tuple": "cpp",
+			"cmath": "cpp",
+			"*.old": "cpp",
+			"random": "cpp",
+			"memory": "cpp",
+			"ranges": "cpp",
+			"utility": "cpp",
+			"atomic": "cpp",
+			"concepts": "cpp",
+			"cstddef": "cpp",
+			"cstdio": "cpp",
+			"cwchar": "cpp",
+			"functional": "cpp",
+			"memory_resource": "cpp",
+			"new": "cpp",
+			"stdexcept": "cpp",
+			"system_error": "cpp",
+			"typeinfo": "cpp",
+			"__locale": "cpp",
+			"__string": "cpp"
+		}
+	}
+}
