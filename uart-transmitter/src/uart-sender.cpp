@@ -103,11 +103,14 @@ void setup() {
 
     UART_INSTANCE.setFIFOSize(UART_FIFO_SIZE);
     UART_INSTANCE.begin(UART_BAUDRATE);
+    // Workaround for the issue where available() is reporting bytes available at the start when there are none.
+    //while(UART_INSTANCE.available()) UART_INSTANCE.read();
 
     // Initialize output buffer
     for (size_t i = 0; i < BUF_LEN; ++i) {
         out_buf[i] = i + 1;
     }
+
 
     Serial.printf("UART sender says: The following %u byte Output buffer will be written to the receiver endlessly:\r\n", BUF_LEN);
     printbuf(out_buf, BUF_LEN);

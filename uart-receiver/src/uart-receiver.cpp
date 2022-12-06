@@ -101,6 +101,8 @@ void setup() {
 
     UART_INSTANCE.setFIFOSize(UART_FIFO_SIZE);
     UART_INSTANCE.begin(UART_BAUDRATE);
+    // Workaround for the issue where available() is reporting bytes available at the start when there are none.
+    //while(UART_INSTANCE.available()) UART_INSTANCE.read();
 
     // Initialize output buffer
     for (size_t i = 0; i < BUF_LEN; ++i) {
@@ -108,9 +110,14 @@ void setup() {
         out_buf[i] = ~i;
     }
 
+
     Serial.printf("UART receiver says: When reading from the sender, the following %u byte Output buffer will be sent back to the sender:\r\n", BUF_LEN);
     printbuf(out_buf, BUF_LEN);
     startMillis = millis();
+}
+
+void serialEvent() {
+  //statements
 }
 
 void loop() {
