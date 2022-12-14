@@ -10,6 +10,10 @@
 #define DEBUG_PIN5 (9u)
 #define DEBUG_PIN_INITIAL_STATE (HIGH)
 
+// Serial data output and debugging options
+#define DEBUG_SERIAL_OUTPUT_SCROLLING (false) // If not scrolling the terminal position is reset using escape sequences, proper terminal emulator required
+#define DEBUG_SERIAL_OUTPUT_PAGE_LIMIT (0) // Set to zero to show all pages
+
 #define UART_INSTANCE Serial1 // Serial1 is UART 0 on the Pico, Serial2 is UART1
 #define UART_FIFO_SIZE (256)
 #define UART_BAUDRATE (921600)
@@ -40,7 +44,7 @@ void printbuf(uint8_t buf[], size_t len) {
 
     // append trailing newline if there isn't one
     if (i % 16) {
-        Serial.println();
+        Serial.println("   ");
     }
 }
 
@@ -64,18 +68,17 @@ void clearbuf(uint8_t buf[], size_t len) {
 
 
 void setup() {
-    //stdio_init_all(); // Enable UART so we can print
     // Setup Serial Comms
     Serial.begin(921600); // Baud rate is ignored because pico has built in USB-UART
     // Wait for Serial Comms or Timeout after 5 seconds
-    while (!Serial && millis() < 5000);
-    int startupDelay = 5; // wait a further 5 seconds
+    //while (!Serial && millis() < 5000);
+    int startupDelay = 9; // wait a further 5 seconds
     for (int i = 1; i <= startupDelay; ++i) {
-        printf("Waiting %d seconds to start: %d\r\n", startupDelay, i);
+        Serial.printf("Waiting %d seconds to start: %d\r\n", startupDelay, i);
         sleep_ms(1000);
     }
-    printf("\e[2J\e[H"); // clear screen and go to home position
-    printf("UART receiver using Baud Rate: %d \r\n", UART_BAUDRATE);
+    Serial.printf("\e[2J\e[H"); // clear screen and go to home position
+    Serial.printf("UART receiver using Baud Rate: %d \r\n", UART_BAUDRATE);
     #ifdef ARDUINO_ARCH_RP2040
         Serial.printf("rp2040_chip_version: %d \r\n", rp2040_chip_version());
         Serial.printf("rp2040_rom_version: %d \r\n", rp2040_rom_version());
@@ -126,6 +129,7 @@ void loop() {
     int bytesAvailable = UART_INSTANCE.available();
     if (bytesAvailable > 0) {
         digitalWrite(DEBUG_PIN2, LOW);
+        digitalWrite(LED_BUILTIN, HIGH);
         // Read the expected byte count from the sender
         expectedByteCount = UART_INSTANCE.read();
         //  Read from the UART
@@ -142,17 +146,22 @@ void loop() {
         digitalWrite(DEBUG_PIN3, HIGH);
         delayMicroseconds(10);
         digitalWrite(DEBUG_PIN3, LOW);
-        Serial.printf("\e[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); // move to the home position, at the upper left of the screen and then down
-        Serial.printf("bytesAvailable: %3d                                             \r\n", bytesAvailable);
-        Serial.printf("UART receiver says: read page %u from the sender, byteCount: %u lastReceivedByteCount: %u \r\n", receiveCounter, byteCount, lastReceivedByteCount);
-        // Write the buffer out to the USB serial port
-        printbuf(in_buf, BUF_LEN);
-        Serial.printf("UART receiver says: Responded with Output buffer page %u, buffer size: %03u \r\n", receiveCounter, BUF_LEN);
-        verifyInBuffer(receiveCounter);
+        if ((DEBUG_SERIAL_OUTPUT_PAGE_LIMIT == 0) || (receiveCounter <= DEBUG_SERIAL_OUTPUT_PAGE_LIMIT)) { // optionally only show the results up to DEBUG_SERIAL_OUTPUT_PAGE_LIMIT
+            if (!DEBUG_SERIAL_OUTPUT_SCROLLING) {
+                Serial.printf("\e[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); // move to the home position, at the upper left of the screen and then down
+            }
+            Serial.printf("\r\nbytesAvailable: %3d                                             \r\n", bytesAvailable);
+            Serial.printf("UART receiver says: read page %u from the sender, byteCount: %u lastReceivedByteCount: %u \r\n", receiveCounter, byteCount, lastReceivedByteCount);
+            // Write the buffer out to the USB serial port
+            printbuf(in_buf, BUF_LEN);
+            Serial.printf("UART receiver says: Responded with Output buffer page %u, buffer size: %03u \r\n", receiveCounter, BUF_LEN);
+            verifyInBuffer(receiveCounter);
+        }
         clearbuf(in_buf, BUF_LEN);
         lastReceivedByteCount = byteCount;
         receiveCounter++;
         digitalWrite(DEBUG_PIN3, HIGH);
+        digitalWrite(LED_BUILTIN, LOW);
     }
 
     seconds = (millis() - startMillis) / 1000;
