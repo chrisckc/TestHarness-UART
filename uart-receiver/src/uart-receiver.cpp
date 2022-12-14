@@ -30,16 +30,17 @@
 uint8_t out_buf[BUF_LEN], in_buf[BUF_LEN];
 unsigned int seconds = 0, lastSeconds = 0;
 unsigned int receiveCounter = 0, lastReceiveCount = 0, receiveRate = 0, errorCount = 0;
-uint8_t byteCount = 0, lastReceivedByteCount = 0;
+uint8_t expectedByteCount = 0, lastReceivedByteCount = 0;
 unsigned long startMillis = 0;
+unsigned long currentMillis = 0;
 
 void printbuf(uint8_t buf[], size_t len) {
     int i;
     for (i = 0; i < len; ++i) {
         if (i % 16 == 15)
-            Serial.printf("%02x \r\n", buf[i]);
+            Serial.printf("%02X \r\n", buf[i]);
         else
-            Serial.printf("%02x ", buf[i]);
+            Serial.printf("%02X ", buf[i]);
     }
 
     // append trailing newline if there isn't one
@@ -113,9 +114,9 @@ void setup() {
         out_buf[i] = ~i;
     }
 
-
     Serial.printf("UART receiver says: When reading from the sender, the following %u byte Output buffer will be sent back to the sender:\r\n", BUF_LEN);
     printbuf(out_buf, BUF_LEN);
+
     startMillis = millis();
 }
 
@@ -124,7 +125,10 @@ void serialEvent() {
 }
 
 void loop() {
-    static uint8_t expectedByteCount;
+    static unsigned long lastSecondMillis = 0;
+    static unsigned int loopCounter = 0, lastLoopCounter = 0;
+    loopCounter++;
+
     // Read the expected byte count a simple way of verifying the last data transfer
     int bytesAvailable = UART_INSTANCE.available();
     if (bytesAvailable > 0) {
@@ -134,7 +138,7 @@ void loop() {
         expectedByteCount = UART_INSTANCE.read();
         //  Read from the UART
         UART_INSTANCE.readBytes(in_buf, expectedByteCount); // If the expected bytes are not all received the function will timeout subject to setTimeout(), default 1000mS
-        byteCount = expectedByteCount;
+        expectedByteCount;
         digitalWrite(DEBUG_PIN2, HIGH);
 
         digitalWrite(DEBUG_PIN3, LOW);
@@ -144,36 +148,42 @@ void loop() {
         // Write the output buffer to the UART
         UART_INSTANCE.write(out_buf, BUF_LEN);
         digitalWrite(DEBUG_PIN3, HIGH);
+
+        // Keep track of seconds since start
+        currentMillis =  millis();
+        seconds = (currentMillis - startMillis) / 1000;
+        if (seconds - lastSeconds > 0) {
+            lastSeconds = seconds;
+            receiveRate = receiveCounter - lastReceiveCount;
+            lastReceiveCount = receiveCounter;
+        }
         delayMicroseconds(10);
         digitalWrite(DEBUG_PIN3, LOW);
         if ((DEBUG_SERIAL_OUTPUT_PAGE_LIMIT == 0) || (receiveCounter <= DEBUG_SERIAL_OUTPUT_PAGE_LIMIT)) { // optionally only show the results up to DEBUG_SERIAL_OUTPUT_PAGE_LIMIT
             if (!DEBUG_SERIAL_OUTPUT_SCROLLING) {
-                Serial.printf("\e[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); // move to the home position, at the upper left of the screen and then down
+                Serial.printf("\e[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); // move to the home position, at the upper left of the screen and then down
             }
-            Serial.printf("\r\nbytesAvailable: %3d                                             \r\n", bytesAvailable);
-            Serial.printf("UART receiver says: read page %u from the sender, byteCount: %u lastReceivedByteCount: %u \r\n", receiveCounter, byteCount, lastReceivedByteCount);
+            Serial.printf("\r\nSeconds: %07u.%03u       \r\n", seconds, currentMillis - startMillis - (seconds * 1000));
+            Serial.printf("receiveCounter: %07u         \r\n", receiveCounter);
+            Serial.printf("receiveRate: %07u         \r\n", receiveRate);
+            Serial.printf("Receive errorCount: %03u         \r\n", errorCount);
+            Serial.printf("Data Received: UART_INSTANCE.available() bytes was: %d                                         \r\n", bytesAvailable);
+            Serial.printf("UART receiver says: read page %u from the sender, byteCount: %u lastReceivedByteCount: %u \r\n", receiveCounter, expectedByteCount, lastReceivedByteCount);
             // Write the buffer out to the USB serial port
             printbuf(in_buf, BUF_LEN);
             Serial.printf("UART receiver says: Responded with Output buffer page %u, buffer size: %03u \r\n", receiveCounter, BUF_LEN);
+            Serial.printf("UART Receiver says: Verifying received data... \r\n");
+            if (expectedByteCount != BUF_LEN) {
+                printf("ERROR!!! page: %u bytesExpected: %03u should equal the Buffer Length: %03u\r\n", receiveCounter, expectedByteCount, BUF_LEN);
+            }
             verifyInBuffer(receiveCounter);
         }
         clearbuf(in_buf, BUF_LEN);
-        lastReceivedByteCount = byteCount;
+        lastReceivedByteCount = expectedByteCount;
         receiveCounter++;
         digitalWrite(DEBUG_PIN3, HIGH);
         digitalWrite(LED_BUILTIN, LOW);
     }
 
-    seconds = (millis() - startMillis) / 1000;
-    if (seconds - lastSeconds > 0) {
-        receiveRate = receiveCounter - lastReceiveCount;
-        lastReceiveCount = receiveCounter;
-        lastSeconds = seconds;
-        Serial.printf("\e[H"); // move to the home position, at the upper left of the screen
-        Serial.printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSeconds: %07u        \r\n", seconds);
-        Serial.printf("receiveCounter: %07u         \r\n", receiveCounter);
-        Serial.printf("receiveRate: %07u         \r\n", receiveRate);
-        Serial.printf("Receive errorCount: %03u         \r\n", errorCount);
-        Serial.printf("                                                                               \r\n");
-    }
+
 }

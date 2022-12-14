@@ -123,7 +123,7 @@ void setup() {
     Serial.printf("\r\n");
     Serial.printf("The value 0x%02X (%u) is expected to be returned followed by a reversed version of the above buffer\r\n\r\n", BUF_LEN, BUF_LEN);
 
-    unsigned long startMillis = millis();
+    startMillis = millis();
 }
 
 void sendTestData(uint8_t length) {
@@ -142,7 +142,6 @@ void sendTestData(uint8_t length) {
 
 void loop() {
     static unsigned long lastSecondMillis = 0;
-
     static unsigned int loopCounter = 0, lastLoopCounter = 0;
     loopCounter++;
     currentMillis =  millis();
@@ -151,6 +150,7 @@ void loop() {
     // Send data every sendInterval
     if (currentMillis >= lastSendMillis + sendInterval) {
         lastSendMillis = currentMillis;
+        digitalWrite(LED_BUILTIN, HIGH);
         lastSecondMillis = currentMillis;
         lastLoopCounter = loopCounter;
         loopCounter = 0;
@@ -159,7 +159,7 @@ void loop() {
         digitalWrite(LED_BUILTIN, HIGH);
         if ((DEBUG_SERIAL_OUTPUT_PAGE_LIMIT == 0) || (receiveCounter <= DEBUG_SERIAL_OUTPUT_PAGE_LIMIT)) { // optionally only show the results up to DEBUG_SERIAL_OUTPUT_PAGE_LIMIT
             if (!DEBUG_SERIAL_OUTPUT_SCROLLING) {
-                Serial.printf("\e[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); // move to the home position, at the upper left of the screen
+                Serial.printf("\e[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); // move to the home position, at the upper left of the screen
             }
             Serial.printf("\r\nSeconds: %07u.%03u       \r\n", seconds, currentMillis - startMillis - (seconds * 1000));
             Serial.printf("LoopRate: %07u         \r\n", lastLoopCounter); // how many loops per second
@@ -170,10 +170,8 @@ void loop() {
             Serial.printf("Receive errorCount: %03u         \r\n", errorCount); // how many loops per second
         }
 
-        //Send data...
-        digitalWrite(LED_BUILTIN, ledState);
-        ledState = !ledState;
         digitalWrite(DEBUG_PIN3, LOW);
+        //Send data...
         sendTestData(BUF_LEN);
         digitalWrite(DEBUG_PIN3, HIGH);
         digitalWrite(LED_BUILTIN, LOW);
@@ -191,10 +189,14 @@ void loop() {
         delayMicroseconds(10);
         digitalWrite(DEBUG_PIN2, LOW);
         if ((DEBUG_SERIAL_OUTPUT_PAGE_LIMIT == 0) || (receiveCounter <= DEBUG_SERIAL_OUTPUT_PAGE_LIMIT)) { // optionally only show the results up to DEBUG_SERIAL_OUTPUT_PAGE_LIMIT
-            Serial.printf("bytesAvailable: %3d                                                             \r\n", bytesAvailable);
+            Serial.printf("Data Received: UART_INSTANCE.available() bytes was: %d                            \r\n", bytesAvailable);
             Serial.printf("UART sender says: read page %u back from the receiver, previousTransferSize: %03u \r\n", sendCounter, previousTransferSize);
             // Write the buffer out to the USB serial port
             printbuf(in_buf, BUF_LEN);
+            Serial.printf("UART Sender says: Verifying received data...                                         \r\n");
+            if (previousTransferSize != BUF_LEN) {
+                Serial.printf("ERROR!!! page: %u bytesExpected: %03u should equal the Buffer Length: %03u\r\n", receiveCounter, previousTransferSize, BUF_LEN);
+            }
             verifyInBuffer(sendCounter);
         }
         clearbuf(in_buf, BUF_LEN);
